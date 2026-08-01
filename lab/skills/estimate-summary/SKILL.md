@@ -1,6 +1,6 @@
 ---
 name: estimate-summary
-description: How to write the stakeholder-facing summary of an effort estimate.
+description: How to write the stakeholder-facing summary of an effort estimate. Use when writing the final estimate summary text.
 ---
 
 - Lead with the total (including risk buffer), then break down by side.

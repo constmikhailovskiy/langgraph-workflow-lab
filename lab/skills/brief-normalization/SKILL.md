@@ -1,6 +1,6 @@
 ---
 name: brief-normalization
-description: How to normalize a raw feature brief/PRD for downstream planning.
+description: How to normalize a raw feature brief/PRD for downstream planning. Use when cleaning up a raw brief before story decomposition.
 ---
 
 - Preserve every concrete requirement, constraint, and number in the source text — never drop detail while cleaning up.

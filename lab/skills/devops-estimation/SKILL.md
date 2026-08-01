@@ -1,6 +1,6 @@
 ---
 name: devops-estimation
-description: What a DevOps engineer should weigh when estimating infra/deployment effort.
+description: What a DevOps engineer should weigh when estimating infra/deployment effort. Use when estimating the DevOps side of a story list.
 ---
 
 For each story, account for:

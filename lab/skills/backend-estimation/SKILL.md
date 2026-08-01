@@ -1,6 +1,6 @@
 ---
 name: backend-estimation
-description: What a backend engineer should weigh when estimating implementation effort.
+description: What a backend engineer should weigh when estimating implementation effort. Use when estimating the backend side of a story list.
 ---
 
 For each story, account for:

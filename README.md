@@ -58,7 +58,7 @@ lab/
 │   ├── gates.py          # Gate abstraction (opt-in validation)
 │   ├── repair.py         # generic repair subgraph (opt-in)
 │   └── tools/fs.py       # sandboxed read/write (both guarded)
-├── skills/                # markdown skills injected into node prompts (see below)
+├── skills/                # Agent Skills (agentskills.io) injected into node prompts (see below)
 └── workflows/
     └── estimation/       # worked reference: copy me to start a new workflow
         ├── graph.py      # StateGraph wiring
@@ -68,9 +68,13 @@ lab/
 
 ## Skills
 
-Each real (non-DRY_RUN) node in the estimation workflow attaches its own
-`lab/skills/<name>.md` via `with_skills`, so its rubric lives in one reusable
-file instead of being baked into the prompt string:
+Skills follow the open [Agent Skills](https://agentskills.io) standard: each
+one is a directory `lab/skills/<name>/SKILL.md` (frontmatter + instructions,
+plus optional `scripts/`/`references/`/`assets/`), the same format Claude Code
+and other agentskills.io-compatible clients use. Each real (non-DRY_RUN) node
+in the estimation workflow attaches its own skill via `with_skills`, so its
+rubric lives in one reusable, swappable folder instead of being baked into the
+prompt string:
 
 | Node               | Skill                  |
 | ------------------ | ----------------------- |

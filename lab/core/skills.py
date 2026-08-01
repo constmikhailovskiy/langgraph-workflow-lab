@@ -1,7 +1,10 @@
-"""Reusable markdown "skills" for LLM nodes and subagents.
+"""Reusable "skills" for LLM nodes and subagents, following the open Agent Skills
+standard (https://agentskills.io/specification).
 
-A skill is a markdown file at ``lab/skills/<name>.md`` whose body is injected into
-a node's prompt / system prompt. This mirrors how Claude Code skills feel, using
+A skill is a directory at ``lab/skills/<name>/SKILL.md`` — YAML frontmatter
+(``name``, ``description``, ...) followed by a Markdown instruction body, plus
+optional ``scripts/``, ``references/``, ``assets/`` subdirectories. This mirrors
+how Claude Code and other agentskills.io-compatible clients load skills, using
 LangGraph's real extension point — the prompt — so any ``llm_step`` or
 ``subagent`` node can be handed reusable instructions without re-writing them.
 
@@ -28,6 +31,8 @@ from pathlib import Path
 #: lab/core/skills.py -> parents[1] == lab/ ; skills live in lab/skills/
 SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 
+SKILL_FILE = "SKILL.md"
+
 
 class SkillNotFound(Exception):
     pass
@@ -43,8 +48,12 @@ def _strip_frontmatter(text: str) -> str:
 
 
 def load_skill(name: str) -> str:
-    """Return the instruction body of skill ``name`` (frontmatter stripped)."""
-    path = SKILLS_DIR / f"{name}.md"
+    """Return the instruction body of skill ``name`` (frontmatter stripped).
+
+    Looks up ``lab/skills/<name>/SKILL.md`` per the Agent Skills directory
+    layout (a skill is a folder, not a bare markdown file).
+    """
+    path = SKILLS_DIR / name / SKILL_FILE
     if not path.is_file():
         raise SkillNotFound(f"skill {name!r} not found in {SKILLS_DIR}")
     return _strip_frontmatter(path.read_text(encoding="utf-8")).strip()
@@ -66,13 +75,10 @@ def with_skills(base_prompt: str, names: list[str] | None) -> str:
 
 
 def available_skills() -> list[str]:
-    """List skill names present in lab/skills/ (without the .md extension)."""
+    """List skill names present in lab/skills/ (directories with a SKILL.md)."""
     if not SKILLS_DIR.is_dir():
         return []
-    return sorted(
-        p.stem for p in SKILLS_DIR.glob("*.md")
-        if p.stem.lower() != "readme" and not p.stem.startswith("_")
-    )
+    return sorted(p.parent.name for p in SKILLS_DIR.glob(f"*/{SKILL_FILE}"))
 
 
 # --------------------------------------------------------------------------- #
@@ -86,14 +92,15 @@ def _is_repo(source: str) -> bool:
 
 
 def _collect(src: Path, names: list[str] | None) -> list[tuple[str, Path]]:
-    """Find skill files in ``src``: flat ``<name>.md`` and nested ``<name>/SKILL.md``."""
+    """Find skill directories under ``src``: nested ``<name>/SKILL.md``, or
+    ``src`` itself being a single skill's root (a bare ``SKILL.md`` at its top).
+    """
     found: list[tuple[str, Path]] = []
-    for p in sorted(src.glob("*.md")):
-        if p.stem.lower() == "readme" or p.stem.startswith("_"):
-            continue
-        found.append((p.stem, p))
-    for p in sorted(src.glob("*/SKILL.md")):  # Claude Code style
-        found.append((p.parent.name, p))
+    root_skill = src / SKILL_FILE
+    if root_skill.is_file():
+        found.append((src.name, src))
+    for p in sorted(src.glob(f"*/{SKILL_FILE}")):
+        found.append((p.parent.name, p.parent))
     if names:
         wanted = set(names)
         found = [(n, p) for n, p in found if n in wanted]
@@ -101,18 +108,23 @@ def _collect(src: Path, names: list[str] | None) -> list[tuple[str, Path]]:
 
 
 def _copy_into_lab(pairs: list[tuple[str, Path]]) -> list[str]:
+    """Copy each skill's whole directory (SKILL.md + scripts/references/assets)
+    into ``lab/skills/<name>/``.
+    """
     SKILLS_DIR.mkdir(parents=True, exist_ok=True)
     imported = []
-    for name, path in pairs:
-        dest = SKILLS_DIR / f"{name}.md"
-        if path.resolve() != dest.resolve():  # skip copying a file onto itself
-            shutil.copyfile(path, dest)
+    for name, src_dir in pairs:
+        dest = SKILLS_DIR / name
+        if src_dir.resolve() != dest.resolve():  # skip copying a skill onto itself
+            if dest.exists():
+                shutil.rmtree(dest)
+            shutil.copytree(src_dir, dest)
         imported.append(name)
     return imported
 
 
 def import_skills_from_dir(src_dir: str | Path, names: list[str] | None = None) -> list[str]:
-    """Copy skill markdown files from a local folder into ``lab/skills/``."""
+    """Copy skill directories from a local folder into ``lab/skills/``."""
     src = Path(src_dir).expanduser().resolve()
     if not src.is_dir():
         raise FileNotFoundError(f"source folder not found: {src}")
@@ -152,7 +164,8 @@ def import_skills(
       then read ``subdir`` (or the repo root).
     - Local folder: read ``source/subdir`` (or ``source``).
 
-    Picks up flat ``<name>.md`` and nested ``<name>/SKILL.md`` files. Returns the
+    Picks up ``<name>/SKILL.md`` directories per the Agent Skills standard, or a
+    single skill whose ``SKILL.md`` sits at the source root. Returns the
     imported skill names.
     """
     if _is_repo(source):
@@ -183,4 +196,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

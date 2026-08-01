@@ -1,6 +1,6 @@
 ---
 name: story-decomposition
-description: Rubric for decomposing a brief into implementable, estimable user stories.
+description: Rubric for decomposing a brief into implementable, estimable user stories. Use when planning stories from a normalized brief.
 ---
 
 - Each story should be independently implementable and testable — if two items always ship together, merge them.

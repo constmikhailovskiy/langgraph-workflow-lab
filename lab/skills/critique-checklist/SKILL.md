@@ -1,6 +1,6 @@
 ---
 name: critique-checklist
-description: A rubric for giving one concrete, actionable improvement to a piece of writing.
+description: A rubric for giving one concrete, actionable improvement to a piece of writing. Use when critiquing prose or copy.
 ---
 
 When critiquing, give exactly ONE improvement and make it concrete:

@@ -1,6 +1,6 @@
 ---
 name: qa-estimation
-description: What a QA engineer should weigh when estimating test effort.
+description: What a QA engineer should weigh when estimating test effort. Use when estimating the QA side of a story list.
 ---
 
 For each story, account for:

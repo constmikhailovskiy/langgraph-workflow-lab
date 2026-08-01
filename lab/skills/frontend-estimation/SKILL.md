@@ -1,6 +1,6 @@
 ---
 name: frontend-estimation
-description: What a frontend engineer should weigh when estimating implementation effort.
+description: What a frontend engineer should weigh when estimating implementation effort. Use when estimating the frontend side of a story list.
 ---
 
 For each story, account for:

@@ -1,6 +1,6 @@
 ---
 name: side-selection
-description: Rubric for picking which implementing sides (backend/frontend/qa/devops) a feature brief needs.
+description: Rubric for picking which implementing sides (backend/frontend/qa/devops) a feature brief needs. Use when selecting the sides for an effort estimate.
 ---
 
 When choosing sides, err inclusive:
