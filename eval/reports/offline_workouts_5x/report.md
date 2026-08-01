@@ -8,6 +8,18 @@
 
 To gauge how deterministic the estimate is, each fixed input is run through a harness N times and the spread of the results is measured — the same input, so any variation comes from the model, not the prompt. Two harnesses are compared on identical inputs: **langgraph** runs the estimation graph end-to-end, and **raw** replays the same skills as plain sequential `claude` calls (no graph). Per run we record each side's hours, the grand total, the selected sides, and the story count; across runs we report range, standard deviation, and CV (stdev/mean — unitless, so it compares across sides and harnesses). The risk buffer is applied identically in both, so it never contributes to the delta. A run that produced no parseable stories (total 0) is a degenerate result, not an estimate, and is excluded from the statistics but shown in the per-iteration table. CV bands: 0 deterministic · <5% highly stable · 5–15% moderate · 15–30% variable · >30% highly variable.
 
+```mermaid
+flowchart TD
+    IN["Fixed input<br/>(same PRD every run)"]
+    IN --> LG["Harness: langgraph<br/>estimation graph end-to-end"]
+    IN --> RAW["Harness: raw<br/>same skills, sequential claude calls"]
+    LG -->|"run N times"| LGR["N results<br/>sides · per-side hours · total · stories"]
+    RAW -->|"run N times"| RAWR["N results"]
+    LGR --> AGG["Aggregate spread<br/>range · stdev · CV<br/>(drop degenerate runs)"]
+    RAWR --> AGG
+    AGG --> REP["Report<br/>stats + per-iteration table"]
+```
+
 ## Harness: `langgraph`
 
 ### Input: `offline_workouts` · 1 run error(s)

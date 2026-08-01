@@ -100,6 +100,18 @@ def render_markdown(results: dict, iterations: int, dry_run: bool) -> str:
         "statistics but shown in the per-iteration table. CV bands: 0 deterministic · "
         "<5% highly stable · 5–15% moderate · 15–30% variable · >30% highly variable.",
         "",
+        "```mermaid",
+        "flowchart TD",
+        '    IN["Fixed input<br/>(same PRD every run)"]',
+        '    IN --> LG["Harness: langgraph<br/>estimation graph end-to-end"]',
+        '    IN --> RAW["Harness: raw<br/>same skills, sequential claude calls"]',
+        '    LG -->|"run N times"| LGR["N results<br/>sides · per-side hours · total · stories"]',
+        '    RAW -->|"run N times"| RAWR["N results"]',
+        '    LGR --> AGG["Aggregate spread<br/>range · stdev · CV<br/>(drop degenerate runs)"]',
+        "    RAWR --> AGG",
+        '    AGG --> REP["Report<br/>stats + per-iteration table"]',
+        "```",
+        "",
     ]
     for hname, inputs in results.items():
         out += [f"## Harness: `{hname}`", ""]
