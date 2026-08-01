@@ -4,3 +4,5 @@ __pycache__/
 .env
 .langgraph_api/
 *.egg-info/
+firebase-debug.log
+*.log
