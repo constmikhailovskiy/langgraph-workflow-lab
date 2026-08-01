@@ -21,7 +21,7 @@ def _flag(name: str, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-@dataclass(frozen=True)
+@dataclass
 class Settings:
     #: When true, no LLM calls run: nodes return deterministic fixtures so the
     #: topology can be walked in Studio without an API key. This is what makes the
