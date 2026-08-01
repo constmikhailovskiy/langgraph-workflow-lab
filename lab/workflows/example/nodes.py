@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from lab.core.llm import llm_for
 from lab.core.settings import settings
+from lab.core.skills import with_skills
 from lab.workflows.example import fixtures
 
 
@@ -27,7 +28,9 @@ def critique(state: dict) -> dict:
     summary = state.get("summary", "")
     if settings.dry_run:
         return {"critique": fixtures.CRITIQUE, "log": ["critique: DRY_RUN fixture"]}
-    resp = llm_for("critique").invoke(
-        f"Give one concrete improvement for this summary:\n\n{summary}"
+    prompt = with_skills(
+        f"Give one concrete improvement for this summary:\n\n{summary}",
+        ["critique-checklist"],
     )
-    return {"critique": resp.content, "log": ["critique: llm ok"]}
+    resp = llm_for("critique").invoke(prompt)
+    return {"critique": resp.content, "log": ["critique: llm ok (skill: critique-checklist)"]}
