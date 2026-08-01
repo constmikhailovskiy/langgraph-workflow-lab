@@ -27,9 +27,10 @@ class EstimationState(WorkflowState, total=False):
     unit: str                       # estimation unit, default "hours"
     sides: list[str]                # implementing sides selected by the orchestrator
     brief: str                      # normalized brief/PRD
-    stories: list[dict]             # planned stories
+    stories: list[dict]             # planned stories (or DRY_RUN stories)
     estimates: Annotated[dict, merge]  # side -> {hours, included, breakdown}
     summary: dict                   # totals + risk buffer + text
+    skills_used: Annotated[dict, merge]  # node -> [skill names attached to its prompt]
 
 
 def build_graph():
