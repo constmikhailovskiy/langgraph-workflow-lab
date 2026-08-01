@@ -18,6 +18,33 @@ estimate out). `DRY_RUN=false` (the default) runs every node through the
 local `claude` CLI under the host session — no API key needed. Set
 `DRY_RUN=true` in `.env` to walk the graph on fixtures instead.
 
+## Running from the console
+
+You don't need Studio to run a graph — invoke it directly as a Python script.
+Unlike `langgraph dev`, a plain `uv run` does **not** read `.env` on its own,
+so pass `--env-file .env` explicitly:
+
+```bash
+uv run --env-file .env python -c "
+from lab.workflows.estimation.graph import graph
+result = graph.invoke({'input': 'Add a dark mode toggle to settings.'})
+print(result['summary']['text'])
+"
+```
+
+Override a single run without touching `.env` by exporting the var instead,
+e.g. `DRY_RUN=true uv run python -c "..."` to walk the graph on fixtures
+without spending any `claude -p` sessions (an exported env var wins over
+`--env-file`, so you can drop `--env-file` too in this case). The full state
+(`sides`, `stories`, `estimates`, `summary`, `log`) is in `result`, not just
+the printed summary text.
+
+To run the test suite from the console:
+
+```bash
+uv run --with pytest pytest tests/ -v
+```
+
 ## Layout
 
 ```
