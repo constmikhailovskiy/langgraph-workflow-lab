@@ -31,15 +31,17 @@ mismatch is visible instead of discovered at run time):
   expects. Until `story_planner` emits the full story contract and
   `estimate_summary` can reduce three-point estimates, that skill's
   instructions partially conflict with the base prompt it's attached to.
-- `story-planner-hitl` mandates two human-in-the-loop approval gates
-  (`scope_review`, `readiness_approval`) and expects the caller to persist a
-  `decision_log` and resume only on an explicit human decision event. This
-  node is a single `claude_print` call with no pause/resume mechanism (no
-  `interrupt()`, no checkpointer) — it will get back a structured payload
-  that names a gate status instead of a plain story list, and `story_planner`
-  still naively `_extract_json`s a story array out of whatever comes back.
-  Honoring the gates for real needs a LangGraph `interrupt()`-based node and a
-  checkpointer; that's a bigger change than swapping the attached skill.
+- `story-planner-hitl` used to mandate two human-in-the-loop approval gates
+  this single-pass node had no way to honor; a later upstream revision (picked
+  up via `--sync`) made it run fully autonomously instead, resolving that
+  mismatch — the skill's directory/frontmatter name is unchanged (a naming
+  leftover upstream), but its body no longer asks for a pause. What's still
+  unresolved: it returns a rich structured plan (per
+  `references/output-contract.md` / `references/story-plan.schema.json` —
+  `assumptions`, `open_questions`, domain routing, a `READY_FOR_ESTIMATION`/
+  `BLOCKED` status) while this module's base prompt asks for the plain
+  `[{id, title, acceptance_criteria}]` array `_extract_json` parses — the same
+  kind of shape conflict as `frontend-estimate` above.
 """
 
 from __future__ import annotations
@@ -154,8 +156,8 @@ def brief_prd_input(state: dict) -> dict:
 def story_planner(state: dict) -> dict:
     """Decompose the brief into implementable stories (the `story-planner-hitl` skill).
 
-    See the module docstring's "open threads" note: this single-pass node does
-    not implement the skill's mandatory human-in-the-loop approval gates.
+    See the module docstring's "open threads" note: the skill's own output
+    contract is richer than the plain story array this node parses.
     """
     brief = state.get("brief", "")
     if settings.dry_run:

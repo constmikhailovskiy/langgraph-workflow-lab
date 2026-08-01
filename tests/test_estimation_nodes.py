@@ -106,7 +106,7 @@ def test_every_node_attaches_its_skill_to_the_prompt() -> None:
     expected_skill_markers = {
         "estimate_orchestrator": "genuinely needs: backend, frontend, qa, devops",
         "brief_prd_input": "This node is deterministic",
-        "story_planner": "stop for human approval before marking the plan ready",
+        "story_planner": "without pausing for human approval",
         "be_estimate": "Estimate ONLY backend work",
         "frontend_estimate": "estimating ONLY the frontend (web UI) work",
         "qa_estimate": "Estimate ONLY QA work",

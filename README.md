@@ -117,13 +117,17 @@ over:**
   `{"total": ..., "breakdown": [...]}` contract — the same shape mismatch
   `ORCHESTRATION.md` documents as unresolved upstream. `--sync` (below) picks
   up the fix once upstream finishes the placeholders and settles the contract.
-- `story-planner-hitl` mandates two human-in-the-loop approval gates and
-  expects the caller to persist a `decision_log` and resume only on an
-  explicit human decision. `story_planner` is a single `claude_print` call
-  with no pause/resume mechanism (no `interrupt()`, no checkpointer) —
-  honoring the gates for real needs a LangGraph `interrupt()`-based node, a
-  bigger change than swapping the attached skill. See the "open threads" note
-  in `lab/workflows/estimation/nodes.py`'s module docstring.
+- `story-planner-hitl` used to mandate two human-in-the-loop approval gates
+  this single-pass node had no way to honor. A later upstream revision —
+  picked up automatically via `--sync` — made it run fully autonomously
+  instead (its directory/frontmatter name is unchanged; only the body
+  dropped the pause). What's still open: it returns a rich structured plan
+  (`assumptions`, `open_questions`, domain routing, a
+  `READY_FOR_ESTIMATION`/`BLOCKED` status) while `story_planner`'s base
+  prompt still asks for the plain `[{id, title, acceptance_criteria}]` array
+  it parses — the same kind of shape mismatch as `frontend-estimate` above.
+  See the "open threads" note in `lab/workflows/estimation/nodes.py`'s module
+  docstring.
 
 See `lab/skills/README.md` for how the skill layer works and how to import
 skills from another repo.
