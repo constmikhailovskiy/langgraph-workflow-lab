@@ -20,6 +20,15 @@ def append(left: list | None, right: list | None) -> list:
     return (left or []) + (right or [])
 
 
+def merge(left: dict | None, right: dict | None) -> dict:
+    """Reducer: shallow-merge dict updates.
+
+    Lets parallel nodes each write their own key of a shared dict (e.g. four
+    estimate nodes writing `estimates[<side>]`) without a write conflict.
+    """
+    return {**(left or {}), **(right or {})}
+
+
 class WorkflowState(TypedDict, total=False):
     #: Free-form entry point text (brief, prompt, PRD, ...).
     input: str
