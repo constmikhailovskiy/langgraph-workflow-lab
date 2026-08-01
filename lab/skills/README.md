@@ -57,3 +57,37 @@ import_skills("https://github.com/org/skills.git", subdir="agents/skills")
 
 Imported skills land in `lab/skills/<name>/` and are immediately attachable by
 name.
+
+**Real example** — every skill the estimation workflow's nodes attach (see
+`NODE_SKILLS` in `lab/workflows/estimation/nodes.py`) was pulled whole from a
+real marketplace repo, no `--names` filter, so future skills that repo adds
+land here too on the next `--sync`:
+
+```bash
+uv run python -m lab.core.skills https://github.com/constmikhailovskiy/htbs-2-02-skills.git \
+    --subdir skills
+```
+
+## Keeping imported skills up to date
+
+Every `import_skills(...)` call — CLI or programmatic — is recorded in
+`lab/skills/sources.json` (unless you pass `--no-track` / `track=False`):
+
+```json
+{"source": "https://...git", "subdir": "skills", "ref": null, "names": null}
+```
+
+`names: null` means "whatever's in `subdir` at sync time" — no need to
+re-list names as the upstream repo grows.
+
+Re-run every recorded import to pick up whatever changed upstream:
+
+```bash
+uv run python -m lab.core.skills --sync
+```
+
+This re-clones each recorded repo at `--depth 1` (so it always gets the tip of
+the recorded `ref`, or the default branch) and overwrites the local copy — the
+same mechanism a plugin-update button would use. Importing the same
+`(source, subdir, ref)` again — whether by hand or via `--sync` — updates the
+existing manifest entry rather than duplicating it.

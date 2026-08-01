@@ -104,14 +104,14 @@ def test_every_node_attaches_its_skill_to_the_prompt() -> None:
         nodes.estimate_summary({"unit": "hours", "estimates": {}})
 
     expected_skill_markers = {
-        "estimate_orchestrator": "err inclusive",
-        "brief_prd_input": "Preserve every concrete requirement",
-        "story_planner": "independently implementable",
-        "be_estimate": "Data model / migration changes",
-        "frontend_estimate": "All UI states",
-        "qa_estimate": "New test cases for the acceptance criteria",
-        "devops_estimate": "New infra, config, secrets",
-        "estimate_summary": "Lead with the total",
+        "estimate_orchestrator": "genuinely needs: backend, frontend, qa, devops",
+        "brief_prd_input": "This node is deterministic",
+        "story_planner": "stop for human approval before marking the plan ready",
+        "be_estimate": "Estimate ONLY backend work",
+        "frontend_estimate": "estimating ONLY the frontend (web UI) work",
+        "qa_estimate": "Estimate ONLY QA work",
+        "devops_estimate": "Estimate ONLY DevOps and infrastructure work",
+        "estimate_summary": "This node is arithmetic, not judgment",
     }
     for node, marker in expected_skill_markers.items():
         assert "# Skills" in prompts[node], f"{node} prompt missing a Skills section"
@@ -139,14 +139,35 @@ def test_full_graph_run_records_which_skill_each_node_used() -> None:
         result = graph.invoke({"input": "Add a dark mode toggle to settings."})
 
     assert result["skills_used"] == {
-        "estimate_orchestrator": ["side-selection"],
-        "brief_prd_input": ["brief-normalization"],
-        "story_planner": ["story-decomposition"],
-        "be_estimate": ["backend-estimation"],
-        "frontend_estimate": ["frontend-estimation"],
-        "qa_estimate": ["qa-estimation"],
-        "devops_estimate": ["devops-estimation"],
+        "estimate_orchestrator": ["estimate-orchestrator"],
+        "brief_prd_input": ["brief-prd-input"],
+        "story_planner": ["story-planner-hitl"],
+        "be_estimate": ["be-estimate"],
+        "frontend_estimate": ["frontend-estimate"],
+        "qa_estimate": ["qa-estimate"],
+        "devops_estimate": ["devops-estimate"],
         "estimate_summary": ["estimate-summary"],
     }
     assert result["summary"]["text"].startswith("Estimate: 20 hours")
+    assert result["stories"] == [{"id": "S1", "title": "Build it", "acceptance_criteria": "It works"}]
+
+
+def test_node_skills_mapping_is_deterministic_and_matches_available_skills() -> None:
+    """NODE_SKILLS is the single source of truth for node<->skill wiring — this
+    guards it from silently drifting out of sync with the graph or lab/skills/."""
+    from lab.core import skills as skills_module
+    from lab.workflows.estimation.graph import ESTIMATE_NODES
+
+    expected_nodes = {
+        "estimate_orchestrator",
+        "brief_prd_input",
+        "story_planner",
+        "estimate_summary",
+        *ESTIMATE_NODES,
+    }
+    assert set(nodes.NODE_SKILLS) == expected_nodes
+
+    available = set(skills_module.available_skills())
+    for node, skill in nodes.NODE_SKILLS.items():
+        assert skill in available, f"{node} maps to skill {skill!r}, missing from lab/skills/"
 

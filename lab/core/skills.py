@@ -23,6 +23,7 @@ Or as a system prompt for a create_agent subagent:
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import tempfile
@@ -32,6 +33,7 @@ from pathlib import Path
 SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 
 SKILL_FILE = "SKILL.md"
+SOURCES_FILE = "sources.json"
 
 
 class SkillNotFound(Exception):
@@ -123,6 +125,62 @@ def _copy_into_lab(pairs: list[tuple[str, Path]]) -> list[str]:
     return imported
 
 
+# --------------------------------------------------------------------------- #
+# Tracking sources, so a later run can pull upstream updates (`--sync`)
+# --------------------------------------------------------------------------- #
+
+
+def _sources_path() -> Path:
+    return SKILLS_DIR / SOURCES_FILE
+
+
+def _load_sources() -> list[dict]:
+    path = _sources_path()
+    if not path.is_file():
+        return []
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _save_sources(sources: list[dict]) -> None:
+    SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    _sources_path().write_text(json.dumps(sources, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _record_source(source: str, subdir: str, ref: str | None, names: list[str] | None) -> None:
+    """Remember an import call so `sync_skills()` can re-run it later.
+
+    Keyed on (source, subdir, ref); a repeat import of the same source/subdir/ref
+    overwrites the previously recorded `names` rather than duplicating the entry.
+    """
+    sources = _load_sources()
+    for entry in sources:
+        if (entry["source"], entry.get("subdir", ""), entry.get("ref")) == (source, subdir, ref):
+            entry["names"] = names
+            break
+    else:
+        sources.append({"source": source, "subdir": subdir, "ref": ref, "names": names})
+    _save_sources(sources)
+
+
+def sync_skills() -> dict[str, list[str]]:
+    """Re-run every recorded import, pulling each source's current upstream state.
+
+    For a git repo this re-clones at ``--depth 1``, so it always picks up
+    whatever is at the tip of the recorded ``ref`` (or the default branch).
+    Returns ``{source: [imported skill names]}``.
+    """
+    imported: dict[str, list[str]] = {}
+    for entry in _load_sources():
+        imported[entry["source"]] = import_skills(
+            entry["source"],
+            subdir=entry.get("subdir", ""),
+            names=entry.get("names"),
+            ref=entry.get("ref"),
+            track=False,  # already recorded; avoid rewriting the manifest mid-loop
+        )
+    return imported
+
+
 def import_skills_from_dir(src_dir: str | Path, names: list[str] | None = None) -> list[str]:
     """Copy skill directories from a local folder into ``lab/skills/``."""
     src = Path(src_dir).expanduser().resolve()
@@ -157,6 +215,7 @@ def import_skills(
     subdir: str = "",
     names: list[str] | None = None,
     ref: str | None = None,
+    track: bool = True,
 ) -> list[str]:
     """Import skills from a git repo URL or a local folder.
 
@@ -167,13 +226,23 @@ def import_skills(
     Picks up ``<name>/SKILL.md`` directories per the Agent Skills standard, or a
     single skill whose ``SKILL.md`` sits at the source root. Returns the
     imported skill names.
+
+    When ``track`` is true (the default), the call is recorded in
+    ``lab/skills/sources.json`` so a later ``sync_skills()`` (or
+    ``python -m lab.core.skills --sync``) can re-import it and pick up
+    whatever changed upstream. Pass ``track=False`` for one-off/local imports
+    you don't want remembered.
     """
     if _is_repo(source):
-        return import_skills_from_repo(source, subdir=subdir, names=names, ref=ref)
-    base = Path(source).expanduser()
-    if subdir:
-        base = base / subdir
-    return import_skills_from_dir(base, names=names)
+        imported = import_skills_from_repo(source, subdir=subdir, names=names, ref=ref)
+    else:
+        base = Path(source).expanduser()
+        if subdir:
+            base = base / subdir
+        imported = import_skills_from_dir(base, names=names)
+    if track:
+        _record_source(source, subdir, ref, names)
+    return imported
 
 
 def main() -> None:
@@ -183,13 +252,36 @@ def main() -> None:
         prog="python -m lab.core.skills",
         description="Import skills into lab/skills/ from a git repo or a local folder.",
     )
-    ap.add_argument("source", help="git repo URL, or a local folder path")
+    ap.add_argument(
+        "source", nargs="?", help="git repo URL, or a local folder path (omit with --sync)"
+    )
     ap.add_argument("--subdir", default="", help="folder within the repo/source to read from")
     ap.add_argument("--names", nargs="*", help="only import these skill names (without .md)")
     ap.add_argument("--ref", help="git branch/tag when source is a repo")
+    ap.add_argument(
+        "--no-track",
+        action="store_true",
+        help="don't record this import in lab/skills/sources.json for future --sync runs",
+    )
+    ap.add_argument(
+        "--sync",
+        action="store_true",
+        help="re-import every source recorded in lab/skills/sources.json, picking up upstream updates",
+    )
     args = ap.parse_args()
 
-    imported = import_skills(args.source, subdir=args.subdir, names=args.names, ref=args.ref)
+    if args.sync:
+        for source, names in sync_skills().items():
+            listing = ", ".join(names) if names else "(none matched)"
+            print(f"synced {source}: {listing}")
+        return
+
+    if not args.source:
+        ap.error("source is required unless --sync is given")
+
+    imported = import_skills(
+        args.source, subdir=args.subdir, names=args.names, ref=args.ref, track=not args.no_track
+    )
     listing = ", ".join(imported) if imported else "(none matched)"
     print(f"imported {len(imported)} skill(s) into {SKILLS_DIR}: {listing}")
 

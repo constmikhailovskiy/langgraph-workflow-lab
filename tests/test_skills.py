@@ -99,3 +99,65 @@ def test_import_skills_from_dir_supports_a_single_skill_at_the_source_root(tmp_p
 
     assert imported == ["single-skill-repo"]
     assert (dest / "single-skill-repo" / "SKILL.md").is_file()
+
+
+def test_import_skills_records_the_source_for_later_sync(tmp_path) -> None:
+    source = tmp_path / "source-repo"
+    dest = tmp_path / "lab-skills"
+    _write_skill(source, "tracked-skill")
+
+    with patch.object(skills, "SKILLS_DIR", dest):
+        skills.import_skills(str(source), names=["tracked-skill"])
+        recorded = skills._load_sources()
+
+    assert recorded == [
+        {"source": str(source), "subdir": "", "ref": None, "names": ["tracked-skill"]}
+    ]
+
+
+def test_import_skills_no_track_does_not_record(tmp_path) -> None:
+    source = tmp_path / "source-repo"
+    dest = tmp_path / "lab-skills"
+    _write_skill(source, "untracked-skill")
+
+    with patch.object(skills, "SKILLS_DIR", dest):
+        skills.import_skills(str(source), names=["untracked-skill"], track=False)
+        recorded = skills._load_sources()
+
+    assert recorded == []
+
+
+def test_import_skills_twice_updates_rather_than_duplicates_the_record(tmp_path) -> None:
+    source = tmp_path / "source-repo"
+    dest = tmp_path / "lab-skills"
+    _write_skill(source, "skill-a")
+    _write_skill(source, "skill-b")
+
+    with patch.object(skills, "SKILLS_DIR", dest):
+        skills.import_skills(str(source), names=["skill-a"])
+        skills.import_skills(str(source), names=["skill-a", "skill-b"])
+        recorded = skills._load_sources()
+
+    assert recorded == [
+        {"source": str(source), "subdir": "", "ref": None, "names": ["skill-a", "skill-b"]}
+    ]
+
+
+def test_sync_skills_reimports_every_recorded_source_and_picks_up_changes(tmp_path) -> None:
+    """The concrete proof `--sync` is a real update mechanism: change the
+    upstream skill body after the first import, then confirm sync pulls it in."""
+    source = tmp_path / "source-repo"
+    dest = tmp_path / "lab-skills"
+    _write_skill(source, "living-skill", body="Old instructions.")
+
+    with patch.object(skills, "SKILLS_DIR", dest):
+        skills.import_skills(str(source), names=["living-skill"])
+        assert skills.load_skill("living-skill") == "Old instructions."
+
+        _write_skill(source, "living-skill", body="New instructions from upstream.")
+        synced = skills.sync_skills()
+
+        assert synced == {str(source): ["living-skill"]}
+        assert skills.load_skill("living-skill") == "New instructions from upstream."
+        # sync must not duplicate the manifest entry it just replayed
+        assert len(skills._load_sources()) == 1
