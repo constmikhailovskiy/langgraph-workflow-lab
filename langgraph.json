@@ -1,7 +1,6 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "example": "./lab/workflows/example/graph.py:graph",
     "estimation": "./lab/workflows/estimation/graph.py:graph"
   },
   "env": ".env"
