@@ -6,19 +6,29 @@
 
 ## Harness: `langgraph`
 
-### Input: `offline_workouts` · 2 run error(s)
+### Input: `offline_workouts` · 1 run error(s)
 
-**Grand total (hours):** mean 154.47, range 126.5–185.1 (Δ 58.6), stdev 29.391, **CV 0.1903 → variable (15-30% CV)**
+**Grand total (hours):** mean 162.7, range 126.5–187.4 (Δ 60.9), stdev 29.104, **CV 0.1789 → variable (15-30% CV)**
 
 | side | mean | min | max | Δ range | stdev | CV | verdict |
 |---|---|---|---|---|---|---|---|
-| backend | 49.33 | 42.0 | 54.0 | 12.0 | 6.429 | 0.1303 | moderately stable (5-15% CV) |
-| frontend | 9.33 | 0.0 | 28.0 | 28.0 | 16.166 | 1.7321 | highly variable (>30% CV) |
-| qa | 75.67 | 68.0 | 80.0 | 12.0 | 6.658 | 0.088 | moderately stable (5-15% CV) |
+| backend | 51.0 | 42.0 | 56.0 | 14.0 | 6.218 | 0.1219 | moderately stable (5-15% CV) |
+| frontend | 14.75 | 0.0 | 31.0 | 31.0 | 17.076 | 1.1577 | highly variable (>30% CV) |
+| qa | 75.75 | 68.0 | 80.0 | 12.0 | 5.439 | 0.0718 | moderately stable (5-15% CV) |
 | devops | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | deterministic (0% CV) |
 
-- side-selection stability: **1 distinct set(s)** — {'backend,frontend,qa': 3}
-- stories/run: mean 8.0, range 7.0–9.0
+- side-selection stability: **1 distinct set(s)** — {'backend,frontend,qa': 4}
+- stories/run: mean 7.75, range 7.0–9.0
+
+**Per-iteration results (hours)** — `ok` rows are the 4 valid samples the stats above use; `excluded` = degenerate/rate-limited (no stories or total 0), not counted:
+
+| # | status | sides | stories | backend | frontend | qa | devops | total |
+|---|---|---|---|---|---|---|---|---|
+| 1 | ok | backend,frontend,qa | 7 | 54 | 28 | 79 | – | 185.1 |
+| 2 | ok | backend,frontend,qa | 9 | 42 | 0 | 68 | – | 126.5 |
+| 3 | ok | backend,frontend,qa | 8 | 52 | 0 | 80 | – | 151.8 |
+| 4 | ok | backend,frontend,qa | 7 | 56 | 31 | 76 | – | 187.4 |
+| 5 | excluded | backend,frontend,qa | 0 | 0 | 0 | 0 | – | 0.0 |
 
 ## Harness: `raw`
 
@@ -35,3 +45,13 @@
 
 - side-selection stability: **1 distinct set(s)** — {'backend,frontend,qa': 4}
 - stories/run: mean 8.0, range 8.0–8.0
+
+**Per-iteration results (hours)** — `ok` rows are the 4 valid samples the stats above use; `excluded` = degenerate/rate-limited (no stories or total 0), not counted:
+
+| # | status | sides | stories | backend | frontend | qa | devops | total |
+|---|---|---|---|---|---|---|---|---|
+| 1 | ok | backend,frontend,qa | 8 | 54 | 0 | 88 | 0 | 163.3 |
+| 2 | ok | backend,frontend,qa | 8 | 0 | 40 | 96 | 0 | 156.4 |
+| 3 | ok | backend,frontend,qa | 8 | 54 | 0 | 84 | 0 | 158.7 |
+| 4 | excluded | backend,frontend,qa | 0 | 0 | 0 | 0 | 0 | 0.0 |
+| 5 | ok | backend,frontend,qa | 8 | 40 | 71 | 71 | 0 | 209.3 |

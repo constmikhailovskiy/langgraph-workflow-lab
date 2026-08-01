@@ -27,6 +27,28 @@ from eval.inputs import sample_briefs
 REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 HARNESSES = {"langgraph": run_langgraph, "raw": run_raw}
 
+_CANON_SIDES = ["backend", "frontend", "qa", "devops"]
+
+
+def _run_status(r: dict) -> str:
+    if "error" in r:
+        return "error"
+    if r.get("stories_count", 0) <= 0 or r.get("total", 0) <= 0:
+        return "excluded"
+    return "ok"
+
+
+def _run_row(idx: int, r: dict) -> str:
+    """One markdown row for a single iteration's actual result."""
+    ps = r.get("per_side", {})
+    cells = ["–" if ps.get(s) is None else f"{ps[s]:g}" for s in _CANON_SIDES]
+    sides = ",".join(r.get("sides", [])) or "–"
+    total = r.get("total", "–")
+    return (
+        f"| {idx} | {_run_status(r)} | {sides} | {r.get('stories_count', '–')} "
+        f"| {' | '.join(cells)} | {total} |"
+    )
+
 
 def run_matrix(iterations: int, harness_names: list[str], inputs: dict) -> dict:
     results: dict = {}
@@ -94,7 +116,15 @@ def render_markdown(results: dict, iterations: int, dry_run: bool) -> str:
                 f"- side-selection stability: **{sel['distinct']} distinct set(s)** — {sel['counts']}",
                 f"- stories/run: mean {sc['mean']}, range {sc['min']}–{sc['max']}",
                 "",
+                f"**Per-iteration results ({unit})** — `ok` rows are the "
+                f"{agg['iterations']} valid samples the stats above use; `excluded` "
+                "= degenerate/rate-limited (no stories or total 0), not counted:",
+                "",
+                "| # | status | sides | stories | backend | frontend | qa | devops | total |",
+                "|---|---|---|---|---|---|---|---|---|",
             ]
+            out += [_run_row(i, r) for i, r in enumerate(data.get("runs", []), 1)]
+            out.append("")
     return "\n".join(out)
 
 
