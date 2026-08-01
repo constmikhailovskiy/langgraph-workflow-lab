@@ -1,7 +1,7 @@
 """Deterministic DRY_RUN outputs for the estimation workflow.
 
-Lets the whole fan-out (orchestrator -> planner -> 4 estimates -> summary) run in
-Studio with no API key.
+Lets the whole fan-out (planner -> 4 estimates -> summary) run in Studio with
+no API key.
 """
 
 # Canonical implementing sides.

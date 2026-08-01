@@ -1,8 +1,11 @@
 """Estimation workflow wiring.
 
-    __start__ -> estimate_orchestrator -> brief_prd_input -> story_planner
+    __start__ -> brief_prd_input -> story_planner
               -> [be_estimate, frontend_estimate, qa_estimate, devops_estimate]  (parallel)
               -> estimate_summary -> __end__
+
+There is no separate side-selector node: `story_planner` derives `sides`
+itself from each story's `domain_impact` (see nodes.py's module docstring).
 
 The four estimate nodes fan out from story_planner and fan in to
 estimate_summary; LangGraph runs them concurrently and waits for all four before
@@ -25,7 +28,7 @@ ESTIMATE_NODES = ["be_estimate", "frontend_estimate", "qa_estimate", "devops_est
 
 class EstimationState(WorkflowState, total=False):
     unit: str                       # estimation unit, default "hours"
-    sides: list[str]                # implementing sides selected by the orchestrator
+    sides: list[str]                # implementing sides, derived by story_planner from domain_impact
     brief: str                      # normalized brief/PRD
     stories: list[dict]             # planned stories (or DRY_RUN stories)
     estimates: Annotated[dict, merge]  # side -> {hours, included, breakdown}
@@ -36,7 +39,6 @@ class EstimationState(WorkflowState, total=False):
 def build_graph():
     builder = StateGraph(EstimationState)
 
-    builder.add_node("estimate_orchestrator", nodes.estimate_orchestrator)
     builder.add_node("brief_prd_input", nodes.brief_prd_input)
     builder.add_node("story_planner", nodes.story_planner)
     builder.add_node("be_estimate", nodes.be_estimate)
@@ -45,8 +47,7 @@ def build_graph():
     builder.add_node("devops_estimate", nodes.devops_estimate)
     builder.add_node("estimate_summary", nodes.estimate_summary)
 
-    builder.add_edge(START, "estimate_orchestrator")
-    builder.add_edge("estimate_orchestrator", "brief_prd_input")
+    builder.add_edge(START, "brief_prd_input")
     builder.add_edge("brief_prd_input", "story_planner")
 
     # fan-out to the four estimates, fan-in to the summary

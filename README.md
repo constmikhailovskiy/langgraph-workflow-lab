@@ -37,7 +37,8 @@ e.g. `DRY_RUN=true uv run python -c "..."` to walk the graph on fixtures
 without spending any `claude -p` sessions (an exported env var wins over
 `--env-file`, so you can drop `--env-file` too in this case). The full state
 (`sides`, `stories`, `estimates`, `summary`, `log`) is in `result`, not just
-the printed summary text.
+the printed summary text. `sides` isn't an input you pass — `story_planner`
+derives it itself (see Skills below).
 
 To run the test suite from the console:
 
@@ -82,7 +83,6 @@ own), so the wiring is deterministic and grep-able in one place:
 
 | Node               | Skill                  |
 | ------------------- | ----------------------- |
-| `estimate_orchestrator` | `estimate-orchestrator` |
 | `brief_prd_input`  | `brief-prd-input`        |
 | `story_planner`    | `story-planner-hitl`     |
 | `be_estimate`      | `be-estimate`            |
@@ -91,43 +91,37 @@ own), so the wiring is deterministic and grep-able in one place:
 | `devops_estimate`  | `devops-estimate`        |
 | `estimate_summary` | `estimate-summary`      |
 
-All eight are imported from the
+All seven are imported from the
 [`estimator` plugin](https://github.com/constmikhailovskiy/htbs-2-02-skills) —
-a real agentskills.io-style marketplace repo, not hand-written. Seven match
-that repo's own `ORCHESTRATION.md` node names exactly; `story_planner` is a
+a real agentskills.io-style marketplace repo, not hand-written. Six match that
+repo's own `ORCHESTRATION.md` node names exactly; `story_planner` is a
 deliberate override — the source repo's graph runs the thinner `story-planner`
 placeholder, this workflow runs the fuller `story-planner-hitl` instead.
 `tests/test_estimation_nodes.py::test_node_skills_mapping_is_deterministic_and_matches_available_skills`
-asserts `NODE_SKILLS` covers exactly these eight nodes and every mapped skill
+asserts `NODE_SKILLS` covers exactly these seven nodes and every mapped skill
 exists under `lab/skills/`.
 
-`wbs` and `story-planner` were imported too but aren't wired to any node: the
-source repo's own docs mark `wbs` "not in the graph", and `story-planner` is
-the placeholder `story-planner-hitl` supersedes here.
+There is **no `estimate_orchestrator` node**. `story-planner-hitl` already
+tags every story with `domain_impact: {fe, be, qa, devops}` — routing metadata
+for exactly this purpose — so `story_planner` derives `sides` itself as the
+union of domains any story maps to `True`, instead of a second LLM call
+re-deriving the same routing. `wbs`, `story-planner`, and
+`estimate-orchestrator` were imported too but aren't wired to any node: the
+source repo's own docs mark `wbs` "not in the graph", `story-planner` is the
+placeholder `story-planner-hitl` supersedes, and `estimate-orchestrator`'s job
+is now `story_planner`'s.
 
-**Known open threads, inherited from the source repo, not silently patched
-over:**
-
-- Per that repo's own README, only `frontend-estimate` and `wbs` are finished
-  (✅); five of the other six are explicitly marked `placeholder` — literal
-  `TODO: instructions for the X node` bodies. `frontend-estimate`'s finished
-  SKILL.md asks for a three-point (optimistic/likely/pessimistic) per-story
-  estimate against the full `contracts/story.v1.md` shape, while this repo's
-  `story_planner`/`_estimate`/`estimate_summary` still use the simpler
-  `{"total": ..., "breakdown": [...]}` contract — the same shape mismatch
-  `ORCHESTRATION.md` documents as unresolved upstream. `--sync` (below) picks
-  up the fix once upstream finishes the placeholders and settles the contract.
-- `story-planner-hitl` used to mandate two human-in-the-loop approval gates
-  this single-pass node had no way to honor. A later upstream revision —
-  picked up automatically via `--sync` — made it run fully autonomously
-  instead (its directory/frontmatter name is unchanged; only the body
-  dropped the pause). What's still open: it returns a rich structured plan
-  (`assumptions`, `open_questions`, domain routing, a
-  `READY_FOR_ESTIMATION`/`BLOCKED` status) while `story_planner`'s base
-  prompt still asks for the plain `[{id, title, acceptance_criteria}]` array
-  it parses — the same kind of shape mismatch as `frontend-estimate` above.
-  See the "open threads" note in `lab/workflows/estimation/nodes.py`'s module
-  docstring.
+**Known open thread, inherited from the source repo, not silently patched
+over:** per that repo's own README, only `frontend-estimate` and `wbs` are
+finished (✅); most of the rest are explicitly marked `placeholder` — literal
+`TODO: instructions for the X node` bodies. `frontend-estimate`'s finished
+SKILL.md asks for a three-point (optimistic/likely/pessimistic) per-story
+estimate against the full `contracts/story.v1.md` shape, while `_estimate`/
+`estimate_summary` still use the simpler `{"total": ..., "breakdown": [...]}`
+contract — the same shape mismatch `ORCHESTRATION.md` documents as unresolved
+upstream. `--sync` (below) picks up the fix once upstream settles the
+contract. See the "open threads" note in
+`lab/workflows/estimation/nodes.py`'s module docstring.
 
 See `lab/skills/README.md` for how the skill layer works and how to import
 skills from another repo.
