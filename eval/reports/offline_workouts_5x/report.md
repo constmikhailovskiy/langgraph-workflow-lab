@@ -1,6 +1,6 @@
 # Estimation determinism report
 
-- iterations per input: **4**
+- iterations per input: **5**
 - mode: **REAL (live LLM)**
 - headline metric: coefficient of variation (CV = stdev / mean) of the grand total
 
@@ -20,7 +20,7 @@
 - side-selection stability: **1 distinct set(s)** — {'backend,frontend,qa': 4}
 - stories/run: mean 7.75, range 7.0–9.0
 
-**Per-iteration results (hours)** — `ok` rows are the 4 valid samples the stats above use; `excluded` = degenerate/rate-limited (no stories or total 0), not counted:
+**Per-iteration results (hours)** — `ok` rows are the 4 valid samples the stats above use; `excluded` = degenerate run: story_planner returned no parseable stories (the story-planner-hitl output-contract mismatch), so total 0. Recurs even on a sequential retry, so it is a reliability finding, not just a rate-limit artifact. Not counted in the stats:
 
 | # | status | sides | stories | backend | frontend | qa | devops | total |
 |---|---|---|---|---|---|---|---|---|
@@ -32,26 +32,26 @@
 
 ## Harness: `raw`
 
-### Input: `offline_workouts` · 1 run error(s)
+### Input: `offline_workouts`
 
-**Grand total (hours):** mean 171.93, range 156.4–209.3 (Δ 52.9), stdev 25.081, **CV 0.1459 → moderately stable (5-15% CV)**
+**Grand total (hours):** mean 153.86, range 81.6–209.3 (Δ 127.7), stdev 45.864, **CV 0.2981 → variable (15-30% CV)**
 
 | side | mean | min | max | Δ range | stdev | CV | verdict |
 |---|---|---|---|---|---|---|---|
-| backend | 37.0 | 0.0 | 54.0 | 54.0 | 25.534 | 0.6901 | highly variable (>30% CV) |
-| frontend | 27.75 | 0.0 | 71.0 | 71.0 | 34.452 | 1.2415 | highly variable (>30% CV) |
-| qa | 84.75 | 71.0 | 96.0 | 25.0 | 10.436 | 0.1231 | moderately stable (5-15% CV) |
+| backend | 29.6 | 0.0 | 54.0 | 54.0 | 27.619 | 0.9331 | highly variable (>30% CV) |
+| frontend | 22.2 | 0.0 | 71.0 | 71.0 | 32.314 | 1.4556 | highly variable (>30% CV) |
+| qa | 82.0 | 71.0 | 96.0 | 25.0 | 10.932 | 0.1333 | moderately stable (5-15% CV) |
 | devops | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | deterministic (0% CV) |
 
-- side-selection stability: **1 distinct set(s)** — {'backend,frontend,qa': 4}
+- side-selection stability: **1 distinct set(s)** — {'backend,frontend,qa': 5}
 - stories/run: mean 8.0, range 8.0–8.0
 
-**Per-iteration results (hours)** — `ok` rows are the 4 valid samples the stats above use; `excluded` = degenerate/rate-limited (no stories or total 0), not counted:
+**Per-iteration results (hours)** — `ok` rows are the 5 valid samples the stats above use; `excluded` = degenerate run: story_planner returned no parseable stories (the story-planner-hitl output-contract mismatch), so total 0. Recurs even on a sequential retry, so it is a reliability finding, not just a rate-limit artifact. Not counted in the stats:
 
 | # | status | sides | stories | backend | frontend | qa | devops | total |
 |---|---|---|---|---|---|---|---|---|
 | 1 | ok | backend,frontend,qa | 8 | 54 | 0 | 88 | 0 | 163.3 |
 | 2 | ok | backend,frontend,qa | 8 | 0 | 40 | 96 | 0 | 156.4 |
 | 3 | ok | backend,frontend,qa | 8 | 54 | 0 | 84 | 0 | 158.7 |
-| 4 | excluded | backend,frontend,qa | 0 | 0 | 0 | 0 | 0 | 0.0 |
+| 4 | ok | backend,frontend,qa | 8 | 0 | 0 | 71 | 0 | 81.6 |
 | 5 | ok | backend,frontend,qa | 8 | 40 | 71 | 71 | 0 | 209.3 |

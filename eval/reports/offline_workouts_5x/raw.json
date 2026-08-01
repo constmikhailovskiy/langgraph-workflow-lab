@@ -1,5 +1,5 @@
 {
-  "iterations": 4,
+  "iterations": 5,
   "dry_run": false,
   "results": {
     "langgraph": {
@@ -241,15 +241,15 @@
               "frontend",
               "qa"
             ],
-            "stories_count": 0,
+            "stories_count": 8,
             "per_side": {
               "backend": 0.0,
               "frontend": 0.0,
-              "qa": 0.0,
+              "qa": 71.0,
               "devops": 0.0
             },
-            "subtotal": 0.0,
-            "total": 0.0,
+            "subtotal": 71.0,
+            "total": 81.6,
             "_harness": "raw",
             "_input": "offline_workouts"
           },
@@ -273,40 +273,40 @@
             "_input": "offline_workouts"
           }
         ],
-        "errors": 1,
+        "errors": 0,
         "aggregate": {
-          "iterations": 4,
+          "iterations": 5,
           "unit": "hours",
           "per_side": {
             "backend": {
-              "n": 4,
-              "mean": 37.0,
+              "n": 5,
+              "mean": 29.6,
               "min": 0.0,
               "max": 54.0,
               "range": 54.0,
-              "stdev": 25.534,
-              "cv": 0.6901
+              "stdev": 27.619,
+              "cv": 0.9331
             },
             "frontend": {
-              "n": 4,
-              "mean": 27.75,
+              "n": 5,
+              "mean": 22.2,
               "min": 0.0,
               "max": 71.0,
               "range": 71.0,
-              "stdev": 34.452,
-              "cv": 1.2415
+              "stdev": 32.314,
+              "cv": 1.4556
             },
             "qa": {
-              "n": 4,
-              "mean": 84.75,
+              "n": 5,
+              "mean": 82.0,
               "min": 71.0,
               "max": 96.0,
               "range": 25.0,
-              "stdev": 10.436,
-              "cv": 0.1231
+              "stdev": 10.932,
+              "cv": 0.1333
             },
             "devops": {
-              "n": 4,
+              "n": 5,
               "mean": 0.0,
               "min": 0.0,
               "max": 0.0,
@@ -316,25 +316,25 @@
             }
           },
           "subtotal": {
-            "n": 4,
-            "mean": 149.5,
-            "min": 136.0,
+            "n": 5,
+            "mean": 133.8,
+            "min": 71.0,
             "max": 182.0,
-            "range": 46.0,
-            "stdev": 21.81,
-            "cv": 0.1459
+            "range": 111.0,
+            "stdev": 39.865,
+            "cv": 0.2979
           },
           "total": {
-            "n": 4,
-            "mean": 171.93,
-            "min": 156.4,
+            "n": 5,
+            "mean": 153.86,
+            "min": 81.6,
             "max": 209.3,
-            "range": 52.9,
-            "stdev": 25.081,
-            "cv": 0.1459
+            "range": 127.7,
+            "stdev": 45.864,
+            "cv": 0.2981
           },
           "stories_count": {
-            "n": 4,
+            "n": 5,
             "mean": 8.0,
             "min": 8.0,
             "max": 8.0,
@@ -345,7 +345,7 @@
           "side_selection": {
             "distinct": 1,
             "counts": {
-              "backend,frontend,qa": 4
+              "backend,frontend,qa": 5
             }
           }
         }

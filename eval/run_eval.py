@@ -118,7 +118,10 @@ def render_markdown(results: dict, iterations: int, dry_run: bool) -> str:
                 "",
                 f"**Per-iteration results ({unit})** — `ok` rows are the "
                 f"{agg['iterations']} valid samples the stats above use; `excluded` "
-                "= degenerate/rate-limited (no stories or total 0), not counted:",
+                "= degenerate run: story_planner returned no parseable stories "
+                "(the story-planner-hitl output-contract mismatch), so total 0. "
+                "Recurs even on a sequential retry, so it is a reliability finding, "
+                "not just a rate-limit artifact. Not counted in the stats:",
                 "",
                 "| # | status | sides | stories | backend | frontend | qa | devops | total |",
                 "|---|---|---|---|---|---|---|---|---|",
