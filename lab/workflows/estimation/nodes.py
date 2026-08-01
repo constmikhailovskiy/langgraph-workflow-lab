@@ -34,14 +34,21 @@ computes `sides` as the union of domains any story maps to `True`, so side
 selection is a single source of truth: the plan the estimators will actually
 read from.
 
-Known open thread (not something to silently "fix" here — surfaced so the
-mismatch is visible instead of discovered at run time): `frontend-estimate`'s
-SKILL.md is fully written and asks for a three-point (optimistic/likely/
-pessimistic) per-story estimate against the full `contracts/story.v1.md`
-shape, while `_estimate`/`estimate_summary` still use the simpler
-`{"total": ..., "breakdown": [...]}` contract every other estimate node
-expects. Until `estimate_summary` can reduce three-point estimates, that
-skill's instructions partially conflict with the base prompt it's attached to.
+Known open thread (not something to silently "fix" here — surfaced, not
+papered over): `frontend-estimate`'s SKILL.md is fully written and asks for a
+three-point (optimistic/likely/pessimistic) per-story estimate against the
+full `contracts/story.v1.md` shape, while `_estimate`/`estimate_summary` still
+use the simpler `{"total": ..., "breakdown": [...]}` contract every other
+estimate node expects. In practice the model follows the attached skill over
+the base prompt, so `frontend_estimate` reliably comes back with no top-level
+`total` key at all — `_estimate` below detects that (`shape_ok`), logs a
+`WARNING` instead of silently recording 0 hours, and keeps the full,
+unparsed reply in `estimates[side]["raw_reply"]` so the actual shape is
+visible in Studio's state view. That's a diagnostic, not a fix: until
+`estimate_summary` can reduce three-point estimates (and `story_planner` and
+`frontend-estimate` agree on one story contract — see the `fe` vs `frontend`
+key mismatch between `story-plan.schema.json`'s `domain_impact` and
+`contracts/story.v1.md`'s), `frontend_estimate`'s hours will keep reading 0.
 """
 
 from __future__ import annotations
@@ -208,20 +215,36 @@ def _estimate(state: dict, node: str) -> dict:
         f"If no {label} work is needed, return {{\"total\": 0, \"breakdown\": []}}.\n\n"
         f"Stories:\n{json.dumps(stories, indent=2)}",
     )
-    parsed = _extract_json(claude_print(node, prompt), {})
+    reply = claude_print(node, prompt)
+    parsed = _extract_json(reply, {})
+    # A skill with its own opinionated output contract (e.g. frontend-estimate's
+    # three-point optimistic/likely/pessimistic shape) can make the model ignore
+    # the base prompt's {"total", "breakdown"} ask entirely. Detect that instead
+    # of silently recording 0 hours: `raw_reply` always carries the full,
+    # unparsed reply so the actual shape is visible in Studio's state view.
+    shape_ok = isinstance(parsed, dict) and "total" in parsed
     total = float(parsed.get("total", 0) or 0) if isinstance(parsed, dict) else 0.0
     breakdown = parsed.get("breakdown", []) if isinstance(parsed, dict) else []
 
+    if shape_ok:
+        log_line = f"{node}: skill={skill} {total} {unit}"
+    else:
+        got = sorted(parsed) if isinstance(parsed, dict) else type(parsed).__name__
+        log_line = (
+            f"{node}: skill={skill} WARNING reply had no 'total' key (got {got}); "
+            f"recorded 0 {unit} — see estimates['{side}']['raw_reply'] for the full reply"
+        )
+
     if not included:
         return {
-            "estimates": {side: {"hours": 0.0, "included": False, "breakdown": []}},
+            "estimates": {side: {"hours": 0.0, "included": False, "breakdown": [], "raw_reply": reply}},
             **skill_state,
             "log": [f"{node}: skill={skill} skipped (side not selected)"],
         }
     return {
-        "estimates": {side: {"hours": total, "included": True, "breakdown": breakdown}},
+        "estimates": {side: {"hours": total, "included": True, "breakdown": breakdown, "raw_reply": reply}},
         **skill_state,
-        "log": [f"{node}: skill={skill} {total} {unit}"],
+        "log": [log_line],
     }
 
 

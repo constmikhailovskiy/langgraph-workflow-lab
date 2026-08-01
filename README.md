@@ -119,9 +119,17 @@ SKILL.md asks for a three-point (optimistic/likely/pessimistic) per-story
 estimate against the full `contracts/story.v1.md` shape, while `_estimate`/
 `estimate_summary` still use the simpler `{"total": ..., "breakdown": [...]}`
 contract — the same shape mismatch `ORCHESTRATION.md` documents as unresolved
-upstream. `--sync` (below) picks up the fix once upstream settles the
-contract. See the "open threads" note in
-`lab/workflows/estimation/nodes.py`'s module docstring.
+upstream. In practice the model follows the attached skill over the base
+prompt, so **`frontend_estimate` reliably comes back with 0 hours** — `_estimate`
+detects the missing `total` key, logs a `WARNING` line instead of failing
+silently, and keeps the full unparsed reply in
+`estimates["frontend"]["raw_reply"]` so you can see the actual three-point
+JSON in Studio's state view instead of just an unexplained zero. That's
+visibility, not a fix: `--sync` (below) picks up the real fix once upstream
+settles the contract (and resolves the `fe` vs `frontend` key mismatch between
+`story-plan.schema.json`'s `domain_impact` and `contracts/story.v1.md`'s). See
+the "open threads" note in `lab/workflows/estimation/nodes.py`'s module
+docstring.
 
 See `lab/skills/README.md` for how the skill layer works and how to import
 skills from another repo.

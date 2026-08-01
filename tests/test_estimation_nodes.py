@@ -76,6 +76,44 @@ def test_unselected_estimate_node_still_calls_claude() -> None:
     assert result["estimates"]["frontend"]["included"] is False
 
 
+def test_estimate_node_flags_a_reply_shape_it_cannot_parse() -> None:
+    """frontend-estimate's own SKILL.md asks for a three-point per-story shape
+    with no top-level 'total' — reproduce that reply and confirm the mismatch
+    is surfaced (WARNING in the log, full reply kept in `raw_reply`) instead
+    of silently recording 0 hours with no explanation."""
+    three_point_reply = (
+        '{"unit":"hours","assumptions":[],"estimates":['
+        '{"story_id":"US-001","estimable":"yes","optimistic":6,"likely":10,"pessimistic":18}'
+        '],"open_questions":[]}'
+    )
+    with (
+        patch.object(nodes, "settings", _real_settings()),
+        patch.object(nodes, "claude_print", return_value=three_point_reply),
+    ):
+        result = nodes.frontend_estimate(
+            {"sides": ["frontend"], "stories": [], "unit": "hours"}
+        )
+
+    estimate = result["estimates"]["frontend"]
+    assert estimate["hours"] == 0.0
+    assert estimate["raw_reply"] == three_point_reply
+    assert "WARNING" in result["log"][0]
+    assert "raw_reply" in result["log"][0]
+
+
+def test_estimate_node_logs_no_warning_when_the_reply_shape_matches() -> None:
+    with (
+        patch.object(nodes, "settings", _real_settings()),
+        patch.object(nodes, "claude_print", return_value='{"total":5,"breakdown":[]}'),
+    ):
+        result = nodes.frontend_estimate(
+            {"sides": ["frontend"], "stories": [], "unit": "hours"}
+        )
+
+    assert result["estimates"]["frontend"]["hours"] == 5.0
+    assert "WARNING" not in result["log"][0]
+
+
 def test_story_planner_derives_sides_from_domain_impact_routing() -> None:
     """story_planner replaces the old estimate_orchestrator: sides come from
     the plan's own per-story domain routing, not a separate selection call."""
