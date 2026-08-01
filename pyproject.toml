@@ -1,0 +1,23 @@
+[project]
+name = "langgraph-workflow-lab"
+version = "0.1.0"
+description = "Extensible, domain-agnostic LangGraph workflow lab for building and testing agentic workflows"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=1.2",
+    "langchain>=1.3",
+    "langchain-anthropic>=1.5",
+    "python-dotenv>=1.1",
+]
+
+[dependency-groups]
+dev = [
+    "langgraph-cli[inmem]>=0.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lab"]
