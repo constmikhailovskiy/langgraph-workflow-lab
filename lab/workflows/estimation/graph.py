@@ -30,6 +30,7 @@ class EstimationState(WorkflowState, total=False):
     stories: list[dict]             # planned stories
     estimates: Annotated[dict, merge]  # side -> {hours, included, breakdown}
     summary: dict                   # totals + risk buffer + text
+    skills_used: Annotated[dict, merge]  # node -> [skill names attached to its prompt]
 
 
 def build_graph():

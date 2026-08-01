@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from lab.workflows.estimation import nodes
+from lab.workflows.estimation.graph import graph
 
 
 def _real_settings() -> SimpleNamespace:
@@ -115,4 +116,37 @@ def test_every_node_attaches_its_skill_to_the_prompt() -> None:
     for node, marker in expected_skill_markers.items():
         assert "# Skills" in prompts[node], f"{node} prompt missing a Skills section"
         assert marker in prompts[node], f"{node} prompt missing its expected skill content"
+
+
+def test_full_graph_run_records_which_skill_each_node_used() -> None:
+    """End-to-end proof: after a real graph run, `skills_used` names the exact
+    skill each node attached — not just that a `# Skills` section existed."""
+    responses = {
+        "estimate_orchestrator": '["backend", "frontend", "qa", "devops"]',
+        "brief_prd_input": "Normalized feature brief",
+        "story_planner": '[{"id":"S1","title":"Build it","acceptance_criteria":"It works"}]',
+        "be_estimate": '{"total":8,"breakdown":[{"story":"S1","hours":8}]}',
+        "frontend_estimate": '{"total":5,"breakdown":[{"story":"S1","hours":5}]}',
+        "qa_estimate": '{"total":3,"breakdown":[{"story":"S1","hours":3}]}',
+        "devops_estimate": '{"total":2,"breakdown":[{"story":"S1","hours":2}]}',
+        "estimate_summary": "Estimate: 20 hours before risk buffer, 23 hours total.",
+    }
+
+    with (
+        patch.object(nodes, "settings", _real_settings()),
+        patch.object(nodes, "claude_print", side_effect=lambda node, prompt: responses[node]),
+    ):
+        result = graph.invoke({"input": "Add a dark mode toggle to settings."})
+
+    assert result["skills_used"] == {
+        "estimate_orchestrator": ["side-selection"],
+        "brief_prd_input": ["brief-normalization"],
+        "story_planner": ["story-decomposition"],
+        "be_estimate": ["backend-estimation"],
+        "frontend_estimate": ["frontend-estimation"],
+        "qa_estimate": ["qa-estimation"],
+        "devops_estimate": ["devops-estimation"],
+        "estimate_summary": ["estimate-summary"],
+    }
+    assert result["summary"]["text"].startswith("Estimate: 20 hours")
 

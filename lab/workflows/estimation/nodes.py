@@ -41,6 +41,16 @@ def _extract_json(text: str, default):
         return default
 
 
+def _attach_skill(node: str, base_prompt: str, skill: str) -> tuple[str, dict]:
+    """Attach `skill` to `base_prompt` and return proof it was used.
+
+    The returned dict's `skills_used[node]` (merged into graph state, see
+    `EstimationState.skills_used`) is the durable evidence a real node run
+    actually attached its skill, independent of the LLM reply content.
+    """
+    return with_skills(base_prompt, [skill]), {"skills_used": {node: [skill]}}
+
+
 # --------------------------------------------------------------------------- #
 # Setup + planning
 # --------------------------------------------------------------------------- #
@@ -56,16 +66,22 @@ def estimate_orchestrator(state: dict) -> dict:
             "sides": list(CANONICAL_SIDES),
             "log": ["estimate_orchestrator: DRY_RUN (all sides)"],
         }
-    prompt = with_skills(
+    prompt, skill_state = _attach_skill(
+        "estimate_orchestrator",
         "Given the feature brief below, which implementing sides are needed?\n"
         f"Choose from: {', '.join(CANONICAL_SIDES)}.\n"
         'Return a JSON array of the needed sides, e.g. ["backend", "qa"].\n\n'
         f"{text}",
-        ["side-selection"],
+        "side-selection",
     )
     picked = _extract_json(claude_print("estimate_orchestrator", prompt), [])
     sides = [s for s in CANONICAL_SIDES if s in picked] or list(CANONICAL_SIDES)
-    return {"unit": unit, "sides": sides, "log": [f"estimate_orchestrator: sides={sides}"]}
+    return {
+        "unit": unit,
+        "sides": sides,
+        **skill_state,
+        "log": [f"estimate_orchestrator: skill=side-selection sides={sides}"],
+    }
 
 
 def brief_prd_input(state: dict) -> dict:
@@ -73,13 +89,18 @@ def brief_prd_input(state: dict) -> dict:
     raw = (state.get("input") or "").strip()
     if settings.dry_run:
         return {"brief": raw, "log": ["brief_prd_input: normalized brief"]}
-    prompt = with_skills(
+    prompt, skill_state = _attach_skill(
+        "brief_prd_input",
         "Clean up and normalize this feature brief/PRD text for downstream "
         f"planning. Return just the normalized text, nothing else:\n\n{raw}",
-        ["brief-normalization"],
+        "brief-normalization",
     )
     brief = claude_print("brief_prd_input", prompt).strip()
-    return {"brief": brief, "log": ["brief_prd_input: normalized brief"]}
+    return {
+        "brief": brief,
+        **skill_state,
+        "log": ["brief_prd_input: skill=brief-normalization normalized brief"],
+    }
 
 
 def story_planner(state: dict) -> dict:
@@ -90,14 +111,19 @@ def story_planner(state: dict) -> dict:
             "stories": fixtures.STORIES,
             "log": [f"story_planner: DRY_RUN {len(fixtures.STORIES)} stories"],
         }
-    prompt = with_skills(
+    prompt, skill_state = _attach_skill(
+        "story_planner",
         "Decompose this feature brief into a short list of implementable user "
         "stories. Return a JSON array of objects {id, title, acceptance_criteria}.\n\n"
         f"{brief}",
-        ["story-decomposition"],
+        "story-decomposition",
     )
     stories = _extract_json(claude_print("story_planner", prompt), [])
-    return {"stories": stories, "log": [f"story_planner: {len(stories)} stories"]}
+    return {
+        "stories": stories,
+        **skill_state,
+        "log": [f"story_planner: skill=story-decomposition {len(stories)} stories"],
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -122,14 +148,15 @@ def _estimate(state: dict, node: str) -> dict:
 
     # Every estimate node runs a real claude -p session, even when its side
     # wasn't selected, so the host session always sees all four sides estimated.
-    prompt = with_skills(
+    prompt, skill_state = _attach_skill(
+        node,
         f"You are a senior {label} engineer estimating implementation effort.\n"
         f"For each story below, estimate the {label} effort in {unit}.\n"
         'Return a JSON object {"total": <number>, "breakdown": '
         '[{"story": <id>, "hours": <number>}]}. '
         f"If no {label} work is needed, return {{\"total\": 0, \"breakdown\": []}}.\n\n"
         f"Stories:\n{json.dumps(stories, indent=2)}",
-        [skill],
+        skill,
     )
     parsed = _extract_json(claude_print(node, prompt), {})
     total = float(parsed.get("total", 0) or 0) if isinstance(parsed, dict) else 0.0
@@ -138,11 +165,13 @@ def _estimate(state: dict, node: str) -> dict:
     if not included:
         return {
             "estimates": {side: {"hours": 0.0, "included": False, "breakdown": []}},
-            "log": [f"{node}: skipped (side not selected)"],
+            **skill_state,
+            "log": [f"{node}: skill={skill} skipped (side not selected)"],
         }
     return {
         "estimates": {side: {"hours": total, "included": True, "breakdown": breakdown}},
-        "log": [f"{node}: {total} {unit}"],
+        **skill_state,
+        "log": [f"{node}: skill={skill} {total} {unit}"],
     }
 
 
@@ -185,17 +214,21 @@ def estimate_summary(state: dict) -> dict:
     lines += [f"  - {side}: {hours}" for side, hours in sorted(per_side.items())]
     lines += [f"  subtotal: {subtotal}", f"  total (with buffer): {total}"]
 
+    skill_state: dict = {}
     if settings.dry_run:
         text = "\n".join(lines)
+        log_line = f"estimate_summary: DRY_RUN total {total} {unit}"
     else:
-        prompt = with_skills(
+        prompt, skill_state = _attach_skill(
+            "estimate_summary",
             "Write a short plain-text summary of this effort estimate for a "
             f"stakeholder. Unit: {unit}. Per-side hours: {json.dumps(per_side)}. "
             f"Subtotal: {subtotal}. Risk buffer: {buffer_pct:g}%. "
             f"Total with buffer: {total}.",
-            ["estimate-summary"],
+            "estimate-summary",
         )
         text = claude_print("estimate_summary", prompt).strip()
+        log_line = f"estimate_summary: skill=estimate-summary total {total} {unit}"
 
     summary = {
         "unit": unit,
@@ -205,4 +238,4 @@ def estimate_summary(state: dict) -> dict:
         "total": total,
         "text": text,
     }
-    return {"summary": summary, "log": [f"estimate_summary: total {total} {unit}"]}
+    return {"summary": summary, **skill_state, "log": [log_line]}

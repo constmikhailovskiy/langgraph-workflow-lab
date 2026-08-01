@@ -90,6 +90,13 @@ prompt string:
 See `lab/skills/README.md` for how the skill layer works and how to import
 skills from another repo.
 
+**Proof a node used its skill:** every real node writes to `skills_used[<node>]`
+in graph state (dict-merge reducer, alongside `estimates`) — after a run,
+`result["skills_used"]` names the exact skill each node attached, independent
+of the LLM's reply content. `log` entries also say `skill=<name>` per node for
+a human-readable trace. See
+`tests/test_estimation_nodes.py::test_full_graph_run_records_which_skill_each_node_used`.
+
 ## Adding a workflow
 
 Copy `lab/workflows/estimation/` to `lab/workflows/<name>/`, edit the nodes and
