@@ -58,12 +58,33 @@ lab/
 │   ├── gates.py          # Gate abstraction (opt-in validation)
 │   ├── repair.py         # generic repair subgraph (opt-in)
 │   └── tools/fs.py       # sandboxed read/write (both guarded)
+├── skills/                # markdown skills injected into node prompts (see below)
 └── workflows/
     └── estimation/       # worked reference: copy me to start a new workflow
         ├── graph.py      # StateGraph wiring
         ├── nodes.py      # node functions
         └── fixtures.py   # DRY_RUN outputs
 ```
+
+## Skills
+
+Each real (non-DRY_RUN) node in the estimation workflow attaches its own
+`lab/skills/<name>.md` via `with_skills`, so its rubric lives in one reusable
+file instead of being baked into the prompt string:
+
+| Node               | Skill                  |
+| ------------------ | ----------------------- |
+| `estimate_orchestrator` | `side-selection`     |
+| `brief_prd_input`  | `brief-normalization`    |
+| `story_planner`    | `story-decomposition`   |
+| `be_estimate`      | `backend-estimation`     |
+| `frontend_estimate`| `frontend-estimation`    |
+| `qa_estimate`      | `qa-estimation`          |
+| `devops_estimate`  | `devops-estimation`      |
+| `estimate_summary` | `estimate-summary`      |
+
+See `lab/skills/README.md` for how the skill layer works and how to import
+skills from another repo.
 
 ## Adding a workflow
 

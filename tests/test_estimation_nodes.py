@@ -72,3 +72,47 @@ def test_unselected_estimate_node_still_calls_claude() -> None:
     cli.assert_called_once()
     assert result["estimates"]["frontend"]["included"] is False
 
+
+def test_every_node_attaches_its_skill_to_the_prompt() -> None:
+    """Each node's prompt must carry its own `# Skills` section, not a shared one."""
+    prompts: dict[str, str] = {}
+
+    def _capture(node: str, prompt: str) -> str:
+        prompts[node] = prompt
+        return {
+            "estimate_orchestrator": '["backend"]',
+            "brief_prd_input": "Normalized brief",
+            "story_planner": '[{"id":"S1","title":"Build it","acceptance_criteria":"It works"}]',
+            "be_estimate": '{"total":1,"breakdown":[]}',
+            "frontend_estimate": '{"total":1,"breakdown":[]}',
+            "qa_estimate": '{"total":1,"breakdown":[]}',
+            "devops_estimate": '{"total":1,"breakdown":[]}',
+            "estimate_summary": "Summary text",
+        }[node]
+
+    with (
+        patch.object(nodes, "settings", _real_settings()),
+        patch.object(nodes, "claude_print", side_effect=_capture),
+    ):
+        orchestrated = nodes.estimate_orchestrator({"input": "Feature"})
+        nodes.brief_prd_input({"input": "Feature"})
+        planned = nodes.story_planner({"brief": "Feature"})
+        state = {"sides": orchestrated["sides"], "stories": planned["stories"], "unit": "hours"}
+        for fn in (nodes.be_estimate, nodes.frontend_estimate, nodes.qa_estimate, nodes.devops_estimate):
+            fn(state)
+        nodes.estimate_summary({"unit": "hours", "estimates": {}})
+
+    expected_skill_markers = {
+        "estimate_orchestrator": "err inclusive",
+        "brief_prd_input": "Preserve every concrete requirement",
+        "story_planner": "independently implementable",
+        "be_estimate": "Data model / migration changes",
+        "frontend_estimate": "All UI states",
+        "qa_estimate": "New test cases for the acceptance criteria",
+        "devops_estimate": "New infra, config, secrets",
+        "estimate_summary": "Lead with the total",
+    }
+    for node, marker in expected_skill_markers.items():
+        assert "# Skills" in prompts[node], f"{node} prompt missing a Skills section"
+        assert marker in prompts[node], f"{node} prompt missing its expected skill content"
+

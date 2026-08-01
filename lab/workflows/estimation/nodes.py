@@ -18,16 +18,17 @@ import re
 
 from lab.core.claude_cli import claude_print
 from lab.core.settings import settings
+from lab.core.skills import with_skills
 from lab.workflows.estimation import fixtures
 
 CANONICAL_SIDES = fixtures.SIDES
 
-# node name -> (canonical side, human label)
+# node name -> (canonical side, human label, skill attached to its prompt)
 _SIDE_OF = {
-    "be_estimate": ("backend", "Backend"),
-    "frontend_estimate": ("frontend", "Frontend"),
-    "qa_estimate": ("qa", "QA"),
-    "devops_estimate": ("devops", "DevOps"),
+    "be_estimate": ("backend", "Backend", "backend-estimation"),
+    "frontend_estimate": ("frontend", "Frontend", "frontend-estimation"),
+    "qa_estimate": ("qa", "QA", "qa-estimation"),
+    "devops_estimate": ("devops", "DevOps", "devops-estimation"),
 }
 
 
@@ -55,11 +56,12 @@ def estimate_orchestrator(state: dict) -> dict:
             "sides": list(CANONICAL_SIDES),
             "log": ["estimate_orchestrator: DRY_RUN (all sides)"],
         }
-    prompt = (
+    prompt = with_skills(
         "Given the feature brief below, which implementing sides are needed?\n"
         f"Choose from: {', '.join(CANONICAL_SIDES)}.\n"
         'Return a JSON array of the needed sides, e.g. ["backend", "qa"].\n\n'
-        f"{text}"
+        f"{text}",
+        ["side-selection"],
     )
     picked = _extract_json(claude_print("estimate_orchestrator", prompt), [])
     sides = [s for s in CANONICAL_SIDES if s in picked] or list(CANONICAL_SIDES)
@@ -71,9 +73,10 @@ def brief_prd_input(state: dict) -> dict:
     raw = (state.get("input") or "").strip()
     if settings.dry_run:
         return {"brief": raw, "log": ["brief_prd_input: normalized brief"]}
-    prompt = (
+    prompt = with_skills(
         "Clean up and normalize this feature brief/PRD text for downstream "
-        f"planning. Return just the normalized text, nothing else:\n\n{raw}"
+        f"planning. Return just the normalized text, nothing else:\n\n{raw}",
+        ["brief-normalization"],
     )
     brief = claude_print("brief_prd_input", prompt).strip()
     return {"brief": brief, "log": ["brief_prd_input: normalized brief"]}
@@ -87,10 +90,11 @@ def story_planner(state: dict) -> dict:
             "stories": fixtures.STORIES,
             "log": [f"story_planner: DRY_RUN {len(fixtures.STORIES)} stories"],
         }
-    prompt = (
+    prompt = with_skills(
         "Decompose this feature brief into a short list of implementable user "
         "stories. Return a JSON array of objects {id, title, acceptance_criteria}.\n\n"
-        f"{brief}"
+        f"{brief}",
+        ["story-decomposition"],
     )
     stories = _extract_json(claude_print("story_planner", prompt), [])
     return {"stories": stories, "log": [f"story_planner: {len(stories)} stories"]}
@@ -102,7 +106,7 @@ def story_planner(state: dict) -> dict:
 
 
 def _estimate(state: dict, node: str) -> dict:
-    side, label = _SIDE_OF[node]
+    side, label, skill = _SIDE_OF[node]
     included = side in state.get("sides", CANONICAL_SIDES)
     stories = state.get("stories", [])
     unit = state.get("unit", "hours")
@@ -118,13 +122,14 @@ def _estimate(state: dict, node: str) -> dict:
 
     # Every estimate node runs a real claude -p session, even when its side
     # wasn't selected, so the host session always sees all four sides estimated.
-    prompt = (
+    prompt = with_skills(
         f"You are a senior {label} engineer estimating implementation effort.\n"
         f"For each story below, estimate the {label} effort in {unit}.\n"
         'Return a JSON object {"total": <number>, "breakdown": '
         '[{"story": <id>, "hours": <number>}]}. '
         f"If no {label} work is needed, return {{\"total\": 0, \"breakdown\": []}}.\n\n"
-        f"Stories:\n{json.dumps(stories, indent=2)}"
+        f"Stories:\n{json.dumps(stories, indent=2)}",
+        [skill],
     )
     parsed = _extract_json(claude_print(node, prompt), {})
     total = float(parsed.get("total", 0) or 0) if isinstance(parsed, dict) else 0.0
@@ -183,11 +188,12 @@ def estimate_summary(state: dict) -> dict:
     if settings.dry_run:
         text = "\n".join(lines)
     else:
-        prompt = (
+        prompt = with_skills(
             "Write a short plain-text summary of this effort estimate for a "
             f"stakeholder. Unit: {unit}. Per-side hours: {json.dumps(per_side)}. "
             f"Subtotal: {subtotal}. Risk buffer: {buffer_pct:g}%. "
-            f"Total with buffer: {total}."
+            f"Total with buffer: {total}.",
+            ["estimate-summary"],
         )
         text = claude_print("estimate_summary", prompt).strip()
 
